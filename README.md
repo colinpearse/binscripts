@@ -1,6 +1,6 @@
-# Colin Pearse Repository
+# Scripts repository
 
-This is a collection of projects and scripts to aid
+This is a collection of general purpose scripts.
 
 ## List
 
