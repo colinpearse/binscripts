@@ -14,4 +14,4 @@ This is a collection of general purpose scripts.
 
 ## Notes
 
-*Note: blah*
+*Note: work in progress*
