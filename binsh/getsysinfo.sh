@@ -7,8 +7,6 @@
 #
 # Name:         getsysinfo.sh
 # Description:  Get system config for Sun, HP, AIX and Linux
-# Date:         2005
-# Author:       Colin Pearse
 
 
 # NOTE: Sun uses egrep only and not grep -E, so use egrep
