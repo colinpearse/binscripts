@@ -6,10 +6,9 @@ This is a collection of general purpose scripts.
 
 * **binsh** general bash, korn scripts
 * **binpl** general perl scripts
-* **binpy** general python3 scripts
+* **binpy** general python scripts
 
-*Note: the python3 scripts don't have execute permissions and
-  are expected to be run as `python <script>`*
+*Note: the python scripts don't have execute permissions and are run using `python <script>`*
 
 ## Links
 
