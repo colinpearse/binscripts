@@ -63,8 +63,6 @@ sub usage
 
    egs. $Myname 192.168.1.2 22,23,100-120            # ping these tcp ports
         $Myname 192.168.1.2 11 udp                   # fairly meaningless since UDP is fire and forget
-        $Myname -f lpars -c3600 513-514              # ping rlogin/rsh ports for one hour
-        $Myname -f viostab -c3600 22                 # ping ssh port for one hour
         $Myname -H myhost1,myhost2 -c1 22            # ping ssh port once
         $Myname -H myhost1,myhost2 -c10 22,111,657   # exit success on first ping of any port on all hosts
 

@@ -25,13 +25,12 @@ sub usage
 {
 	our $Myname;
 	print STDERR qq{
- usage: $Myname [-s sep] [-S sep] [-C cols] [-F cols] [-t hmc]
+ usage: $Myname [-s sep] [-S sep] [-C cols] [-F cols]
 
- -s sep   Input separator (default is white space)  NOTE: -t hmc forces a comma
+ -s sep   Input separator (default is white space)
  -S sep   Output separator (default is a space)
  -C cols  Convert input and display in <cols> columns
  -F cols  Format only first <cols> columns
- -t hmc   Expect HMC style input and format accordingly. NOTE: experimental option.
 
  egs. cat file.csv |$Myname -s,
       cat list.txt |$Myname -C3 -S' | '
@@ -45,7 +44,7 @@ sub usage
 sub GetOptions
 {
 	our %options;
-	getopts("s:S:C:F:t:h",\%options) or usage;   # -? cannot be specified as an option (as in a shell)
+	getopts("s:S:C:F:h",\%options) or usage;   # -? cannot be specified as an option (as in a shell)
 	usage if defined $options{h};
 	my $InputSeparator = '\s+';   # white space
 	my $OutputSeparator = ' ';
@@ -56,8 +55,6 @@ sub GetOptions
 	$OutputSeparator = $options{S} if defined $options{S};
 	$MakeCols        = $options{C} if defined $options{C};
 	$FirstCols       = $options{F} if defined $options{F};
-	$InputType       = $options{t} if defined $options{t};
-	$InputSeparator = "," if $InputType eq "hmc";
 	return ($InputSeparator, $OutputSeparator, $MakeCols, $FirstCols, $InputType);
 }
 
@@ -115,19 +112,10 @@ sub ReadInput
 {
 	my ($InputSeparator, $InputType) = @_;
 	my @Rows;
-	push @Rows, "" if $InputType eq "hmc";
 	while(<STDIN>)
 	{
 		chomp $_;
 		$_ =~ s/[\n\r]//;
-		if ($InputType eq "hmc")
-		{
-			my $Heading = $_;
-			$Heading =~ s/([^=]+)=([^$InputSeparator]*)/$1/g;
-			$_       =~ s/([^=]+)=([^$InputSeparator]*)/$2$InputSeparator/g;
-			$Heading =~ s/(.....)[^$InputSeparator]*(...)/$1$2/g;
-			$Rows[0] = $Heading if(length($Rows[0]) < length($Heading));
-		}
 		push @Rows, $_;
 	}
 	return @Rows;

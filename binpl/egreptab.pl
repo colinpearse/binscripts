@@ -44,9 +44,8 @@ sub usage
  with the field name (taken from the header line, ie. first line of input) on the
  left hand side. Each row will be separated by an empty line.
 
- egs. readexcel data/aperture_lpars.12-11-29.xls |$Myname -i dcgcgracad25u
-      readexcel data/aperture_lpars.12-11-29.xls |$Myname "CTO Unix"
-      readexcel data/aperture_lpars.12-11-29.xls |$Myname ".*"
+ egs. readexcel.pl data/myexcel.xls |$Myname -i "mystr"
+      readexcel.pl data/myexcel.xls |$Myname -i ".*"
 
 };
 	exit 2;
