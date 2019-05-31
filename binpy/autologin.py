@@ -9,20 +9,19 @@
 """
 
 
-from optparse import OptionParser
-from os.path import basename
+import os
 import sys
+import optparse
 import pexpect
-import getpass, os
+import getpass
 import time
 import re
 
-myname = basename(sys.argv[0])
-
+myname = os.path.basename(sys.argv[0])
 
 # NOTE: override OptionParser.format_epilog() to not strip out newlines so we can display examples
 def get_options ():
-    class MyOptionParser(OptionParser):
+    class MyOptionParser(optparse.OptionParser):
         def format_epilog(self, formatter):
             return self.epilog
     parser = MyOptionParser(usage="usage: %prog [options] filename", version="%prog 0.1",
@@ -33,7 +32,7 @@ def get_options ():
 """,
         epilog=
 """Examples:
-  %s -c "ssh -t -oBatchMode=no -oPreferredAuthentications=password -oStrictHostKeyChecking=no myuser@myhost.example.com" -w mypass12 -x id
+  %s -c "ssh -t -oBatchMode=no -oPreferredAuthentications=password -oStrictHostKeyChecking=no myuser@myhost.example.com" -w mypass12 -x "uname -a"
   %s -c "su - myuser" -w mypass12 -x id
   %s -c "unset LD_LIBRARY_PATH; kinit pu1@MYDOM.COM" -w poctest123 -x klist -o ""    # LD_LIBRARY_PATH can give "kinit: relocation error"
 """%(myname,myname,myname))
@@ -41,7 +40,7 @@ def get_options ():
     parser.add_option("-o", "--logout-command", dest="logout_command", metavar="CMD",   type="string", help="logout command for the --pw-command (default: exit)", default="exit")
     parser.add_option("-w", "--password",       dest="password",       metavar="PW",    type="string", help="(mandatory) password")
     parser.add_option("-x", "--fup-command",    dest="fup_command",    metavar="CMD",   type="string", help="(mandatory) execute follow-up command to prove the previous command was successful")
-    parser.add_option("-s", "--shell",          dest="shell",          metavar="CMD",   type="string", help="shell to run commands (default: /usr/bin/ksh)", default="/usr/bin/ksh")
+    parser.add_option("-s", "--shell",          dest="shell",          metavar="CMD",   type="string", help="shell to run commands (default: /bin/bash)", default="/bin/bash")
     parser.add_option("-v", "--verbosity",      dest="verbosity",      metavar="LEVEL", type="int",    help="verbosity level")
     (options, args) = parser.parse_args()
     if len(args) > 0:
@@ -49,6 +48,8 @@ def get_options ():
     if options.pw_command == None or options.password == None or options.fup_command == None:
         parser.print_help()
         sys.exit(2)
+    if options.verbosity == None:
+        options.verbosity = 1
     return options, args
 
 
@@ -96,9 +97,9 @@ def login (shell, pw_command, password, fup_command, logout_command, verbosity=1
     #       out = re.match(r'^.*%s(.*)%s.*$'%(fup_command,PostcomPromptExpr), fu_out, re.S)
     #       if out != None: print(out.group(1))
     # Exclude 1st and last lines (fup_command and PostcomPromptExpr respectively)
-    fu_lines = re.split('\r\n', fu_out)
-    for line in fu_lines[1:len(fu_lines)-1]:
-        print(line)
+    fu_lines = re.split('\r\n', fu_out.decode("utf-8"))
+    for fu_line in fu_lines[1:len(fu_lines)-1]:
+        print(fu_line)
 
 
 def main ():
@@ -110,6 +111,6 @@ if __name__ == '__main__':
     try:
         main()
     except Exception:
-        traceback.print_exc()
-        os._exit(1)
+        print ("exception")
+        sys.exit(1)
 
