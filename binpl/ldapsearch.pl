@@ -7,10 +7,11 @@
 # LICENSE file at the top-level directory for the conditions of distribution.
 #
 # Name:         ldapsearch.pl
-# Description:  Test LDAP search (uses Net/LDAP.pm version 0.56)
-#               We are trying to mimik this.
-#               /usr/bin/ldapsearch -o ldif-wrap=no -Z -H ldaps://host1.thepearses.com:636 -D "cn=Directory Manager" -w $(cat /root/.oud.pw) -b "dc=thepearses,dc=com" -s sub '*'
+# Description:  Test LDAP search (uses Net/LDAP.pm version 0.56) by mimiking /usr/bin/ldapsearch
 
+
+# NOTE: compare with the output of this command:
+#       /usr/bin/ldapsearch -o ldif-wrap=no -Z -H ldaps://host1.thepearses.com:636 -D "cn=Directory Manager" -w $(cat /root/.oud.pw) -b "dc=thepearses,dc=com" -s sub '*'
 
 our $VERSION = "0.1";
 
