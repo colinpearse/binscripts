@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 #!/usr/bin/perl -d
 
-# File:         difffind.pl
+# Author:       Colin Pearse
+# Name:         difffind.pl
 # Description:  Compare the output of two finds
 
 

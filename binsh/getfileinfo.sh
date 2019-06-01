@@ -5,7 +5,7 @@
 # All scripts are free in the binscripts repository but please refer to the
 # LICENSE file at the top-level directory for the conditions of distribution.
 #
-# Author:      Colin Pearse
+# Name:        getfileinfo.sh
 # Description: Part of bootablebackup.sh. Basic script to get 3 types of listings of the root disk or root volume group.
 
 

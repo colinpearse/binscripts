@@ -1,13 +1,8 @@
 #!/usr/bin/perl
 
-
-# Copyright (c) 2005-2019 Colin Pearse.
-# All scripts are free in the binscripts repository but please refer to the
-# LICENSE file at the top-level directory for the conditions of distribution.
-#
-# File:        column.pl
+# Author:      Colin Pearse
+# Name:        column.pl
 # Description: Mimic column command on Linux
-
 
 our $VERSION = "1.0";
 

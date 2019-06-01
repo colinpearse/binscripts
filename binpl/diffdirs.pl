@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 #!/usr/bin/perl -d
 
-# File:         diffdirs.pl
+# Author:       Colin Pearse
+# Name:         diffdirs.pl
 # Description:  Compare directories contents
 
 

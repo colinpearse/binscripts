@@ -6,7 +6,7 @@
 # All scripts are free in the binscripts repository but please refer to the
 # LICENSE file at the top-level directory for the conditions of distribution.
 #
-# File:         nasort.pl
+# Name:         nasort.pl
 # Description:  A Numerical-alpha sort where "str9" comes before "str10"
 #               (as opposed to alphanumerically where numbers are treated like letters)
 

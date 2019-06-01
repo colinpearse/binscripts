@@ -4,7 +4,7 @@
 # All scripts are free in the binscripts repository but please refer to the
 # LICENSE file at the top-level directory for the conditions of distribution.
 #
-# Author:     Colin Pearse
+# Name:       bootablebackup.sh
 # Desription: Bootable backup because mindi could not make an ISO that worked with vmedia. See below for scripts/files needed.
 
 

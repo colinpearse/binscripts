@@ -1,10 +1,11 @@
 #!/bin/bash
 
-# File:         pingall.sh
-# Description:  Ping multiple hosts simultaneously
+# Copyright (c) 2005-2019 Colin Pearse.
+# All scripts are free in the binscripts repository but please refer to the
+# LICENSE file at the top-level directory for the conditions of distribution.
 #
-# Date      Author         Version   Comment
-# 26/02/16  Colin Pearse   0.1       Initial version
+# Name:         pingall.sh
+# Description:  Ping multiple hosts simultaneously
 
 VERSION="0.2"
 

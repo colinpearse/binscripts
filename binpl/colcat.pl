@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
-# File:        colcat.pl
+# Author:      Colin Pearse
+# Name:        colcat.pl
 # Description: Concatenate two files or more sideways sideways, in multiple columns.
 
 our $VERSION = "0.1";

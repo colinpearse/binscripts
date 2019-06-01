@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 #!/usr/bin/perl -d
 
-# File:         writeexcel.pl
-# Description:  Write an Excel spreadsheet (97-2003) from a csv file using Spreadsheet::WriteExcel
+# Author:      Colin Pearse
+# Name:        writeexcel.pl
+# Description: Write an Excel spreadsheet (97-2003) from a csv file using Spreadsheet::WriteExcel
 
 
 our $VERSION = "1.2";

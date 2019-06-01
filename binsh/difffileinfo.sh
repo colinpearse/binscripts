@@ -6,6 +6,7 @@
 # LICENSE file at the top-level directory for the conditions of distribution.
 #
 # Author:      Colin Pearse
+# Name:        difffileinfo.sh
 # Description: Part of bootablebackup.sh. This takes two tgz files (reports from getfileinfo.sh) and compares them.
 
 

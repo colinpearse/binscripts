@@ -5,7 +5,7 @@
 # All scripts are free in the binscripts repository but please refer to the
 # LICENSE file at the top-level directory for the conditions of distribution.
 #
-# File:         egreptab.pl
+# Name:         egreptab.pl
 # Description:  Display each row found by <expr> over multiple lines with the field
 #               name (taken from the header line) on the left hand side. Each row
 #               will be separated by two newlines.

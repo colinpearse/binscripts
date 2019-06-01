@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 #!/usr/bin/perl -d
 
-# File:        readexcel.pl
+# Author:      Colin Pearse
+# Name:        readexcel.pl
 # Description: Read an Excel spreadsheet (97-2003) using Spreadsheet::ParseExcel
 
 

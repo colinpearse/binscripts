@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# File:         printNET.sh
+# Author:       Colin Pearse
+# Name:         printNET.sh
 # Description:  Print network IP from <ip> and <mask|mask num>
 
 VERSION="0.1"

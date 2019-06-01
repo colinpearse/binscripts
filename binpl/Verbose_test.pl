@@ -5,7 +5,7 @@
 # All scripts are free in the binscripts repository but please refer to the
 # LICENSE file at the top-level directory for the conditions of distribution.
 #
-# File:         Verbose_test.pl
+# Name:         Verbose_test.pl
 # Description:  test Verbose.pm
 
 

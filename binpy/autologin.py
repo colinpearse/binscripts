@@ -4,7 +4,7 @@
  All scripts are free in the binscripts repository but please refer to the
  LICENSE file at the top-level directory for the conditions of distribution.
 
- File:        autologin.py
+ Name:        autologin.py
  Description: automatic login using password and then run a command
 """
 

@@ -4,7 +4,7 @@
  All scripts are free in the binscripts repository but please refer to the
  LICENSE file at the top-level directory for the conditions of distribution.
 
- File:        verbose.py
+ Name:        verbose.py
  Description: Implement verbosity. Full description and test at the bottom.
 """
 
