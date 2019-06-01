@@ -1,0 +1,171 @@
+#!/usr/bin/expect
+#!/usr/bin/expect -d
+ 
+# File:         pkgyes.exp
+# Description:  Answer 'y' to all pkgrm/pkgadd questions. You can't use non-interactive mode "pkgrm -n"
+#               because it sometimes gives an error saying "uninstall must be interactive"
+
+
+# NOTE: if buffering, the last buffered output is not displayed if the script ends abnormally (ie. not via exit)
+#       This means it may appear to fail early (eg. passwd stage) when in fact it could be failing on the last exit.
+#
+# NOTE: ptys: spawn creates a psuedo terminal if none exists (ie. run from cron). Regarding on holding on to the
+#       terminal: ssh -t should not be used if the password is for ssh itself but should be used if the password
+#       is after sshs invokation (ie. su - root -c ...).
+#
+# NOTE: tcl output: '\r' are added to all lines from the "spawn [...] " command. This is a pain since
+#       "pw ... > out.txt |cat -v" will show '\r's on all lines - not ideal. puts() doesn't do this,
+#       only the output from spawn. Stty settings are ok.
+
+set myname [exec basename $argv0]
+set homedir [exec sh -c "echo ~"]
+
+#set timestamp [exec date]
+#set user [exec whoami]
+
+set s1   [lindex $argv 0]
+set s2   [lindex $argv 1]
+set s3   [lindex $argv 2]
+set s4   [lindex $argv 3]
+set s5   [lindex $argv 4]
+set s6   [lindex $argv 5]
+set s7   [lindex $argv 6]
+set s8   [lindex $argv 7]
+set s9   [lindex $argv 8]
+set s10  [lindex $argv 9]
+set s11  [lindex $argv 10]
+set s12  [lindex $argv 11]
+set s13  [lindex $argv 12]
+set s14  [lindex $argv 13]
+set s15  [lindex $argv 14]
+set s16  [lindex $argv 15]
+set s17  [lindex $argv 16]
+set s18  [lindex $argv 17]
+set s19  [lindex $argv 18]
+set s20  [lindex $argv 19]
+
+
+#############
+proc usage {} {
+  global myname
+  puts stderr "
+ usage: $myname <command>
+
+ Answer 'y' to all pkgrm/pkgadd questions. You can't use non-interactive mode 'pkgrm -n'
+ because it sometimes gives an error saying 'uninstall must be interactive'
+ 
+ Egs: $myname ssh -qt root@mysol.thepearses.com 'pkgrm COLpkg'
+      $myname ssh -qt root@mysol.thepearses.com 'pkgadd -d /tmp/COLpkg COLpkg'
+"
+  exit 2
+}
+
+###################
+# other methods like [catch {exp_send -i $pid "is alive"} result] didn't fare so well
+proc is_alive {pid} {
+  set psout [exec ps -p $pid]
+  if {[string first "<defunct>" "$psout"] > 0} {
+    return 0
+  } else {
+    return 1
+  }
+}
+
+
+#####################
+proc send_noecho {str} {
+  stty -noecho
+  sleep .2
+  send "$str"
+  stty -echo
+}
+
+
+###################
+proc cleanexit {} {
+  global myname
+  global spawnpid
+  if {[is_alive $spawnpid]} { interact }
+}
+
+
+####################
+# Typical questions of:
+# pkgrm
+#Do you want to remove this package? [y,n,?,q]
+#Do you want to continue with the removal of this package [y,n,?,q]
+# pkgadd:
+#Do you want to install these as setuid/setgid files [y,n,?,q]Do you want to install these as setuid/setgid files [y,n,?,q]
+#Do you want to continue with the installation of <DBpbserv> [y,n,?]
+#Do you want to install these conflicting files [y,n,?,q]
+# NOTE: return value should be advisory since expect has missed the "successful" messages on occasion
+proc answer_yes {} {
+#  sleep 2
+  set RetValue 0
+  set timeout 60
+  expect {
+    -nocase -re "Do you want to remove"                     { send "y\r"; exp_continue }
+    -nocase -re "Do you want to continue with the removal"  { send "y\r"; exp_continue }
+    -nocase -re "Do you want to install these"              { send "y\r"; exp_continue }
+    -nocase -re "Do you want to continue with the install"  { send "y\r"; exp_continue }
+    -nocase -re "Do you want to continue these conflicting" { send "y\r"; exp_continue }
+    -nocase -re "Removal of .* was successful"              { set RetValue 1 }
+    -nocase -re "Installation of .* was successful"         { set RetValue 1 }
+  }
+  return $RetValue
+}
+
+
+########
+# Main
+if {$argc < 2} { usage }
+if {$argc > 21} { puts stderr "$myname: <ssh / scp command> is restricted to 20 arguments (see comments in this script for explanation).\n"; exit 1 }
+
+# NOTE ON SPAWNING using args s1 .. s20
+# -------------------------------------
+# This whole section (argv_woutcmd etc) is commented out because the following scp doesn't work !!
+# Expect translates this: scp -p host:file.'$(uname -n)' dest
+#                   into: scp -p {host:file.$(uname -n)} dest
+if {[string match $s2 ""]} { set spawnpid [spawn $s1]
+} elseif {[string match $s3  ""]} { set spawnpid [spawn $s1 $s2]
+} elseif {[string match $s4  ""]} { set spawnpid [spawn $s1 $s2 $s3]
+} elseif {[string match $s5  ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4]
+} elseif {[string match $s6  ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5]
+} elseif {[string match $s7  ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6]
+} elseif {[string match $s8  ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7]
+} elseif {[string match $s9  ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8]
+} elseif {[string match $s10 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9]
+} elseif {[string match $s11 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10]
+} elseif {[string match $s12 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11]
+} elseif {[string match $s13 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12]
+} elseif {[string match $s14 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13]
+} elseif {[string match $s15 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14]
+} elseif {[string match $s16 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14 $s15]
+} elseif {[string match $s17 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14 $s15 $s16]
+} elseif {[string match $s18 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14 $s15 $s16 $s17]
+} elseif {[string match $s19 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14 $s15 $s16 $s17 $s18]
+} elseif {[string match $s20 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14 $s15 $s16 $s17 $s18 $s19]
+}
+
+#######################
+#debug (like set -x)
+#exp_internal 1
+#set send_human {.4 .4 .2 .5 100}
+set send_human {.1 .3 1 .05 10}
+set env(HISTFILE) ""
+#set prompt "(%|>|\\\$|#)"
+set user_prompt "(>|\\\$)"
+set root_prompt "#"
+
+set Success 0
+if {[answer_yes]} { set Success 1 }
+
+# NOTE: answer_yes return cannot be trusted so wait for $spawn_id (which is not the process id)
+#       also, i don't need cleanexit() if I wait for the process
+set wait_value [wait -i $spawn_id]
+set exit_value [lindex $wait_value 3]
+
+#cleanexit
+
+if {$exit_value == 0} { puts "\n\nPackage command successful"; exit 0 } else { puts stderr "\n\nERROR: Package command failed"; exit 1 }
+

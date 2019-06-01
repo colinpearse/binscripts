@@ -1,0 +1,495 @@
+#!/usr/bin/expect
+#!/usr/bin/expect -d
+
+
+# File:         pw.exp
+# Description:  Standard expect script using PWLOOKUP pw.lookup pw.lookup.enc for password lookups
+
+
+# These functions are useful when setting up and saving (in encrypted form) the environmental PWLOOKUP.
+#   editpw() { echo "$PWLOOKUP" > pw.lookup; vi -i NONE -n pw.lookup; openssl des3 -e -in pw.lookup -out ~/bin/pw.lookup.enc; export PWLOOKUP=$(cat pw.lookup); rm -f pw.lookup; }
+#   setpw()  { export PWLOOKUP=$(openssl des3 -d -in ~/bin/pw.lookup.enc);
+#
+# NOTE: when a password contains a backslash '\' use two instead '\\' otherwise it's taken as a special character.
+#
+# NOTE: if buffering, the last buffered output is not displayed if the script ends abnormally (ie. not via exit)
+#       This means it may appear to fail early (eg. passwd stage) when in fact it could be failing on the last exit.
+#
+# NOTE: ptys: spawn creates a psuedo terminal if none exists (ie. run from cron). Regarding on holding on to the
+#       terminal: ssh -t should not be used if the password is for ssh itself but should be used if the password
+#       is after sshs invokation (ie. su - root -c ...).
+#
+# NOTE: tcl output: '\r' are added to all lines from the "spawn [...] " command. This is a pain since
+#       "pw ... > out.txt |cat -v" will show '\r's on all lines - not ideal. puts() doesn't do this,
+#       only the output from spawn. Stty settings are ok.
+
+set myname [exec basename $argv0]
+set homedir [exec sh -c "echo ~"]
+set pwdir "$homedir/bin"
+
+#set timestamp [exec date]
+#set user [exec whoami]
+
+set pwentry  [lindex $argv 0]
+set rpwentry [lindex $argv 1]
+
+set s1   [lindex $argv 2]
+set s2   [lindex $argv 3]
+set s3   [lindex $argv 4]
+set s4   [lindex $argv 5]
+set s5   [lindex $argv 6]
+set s6   [lindex $argv 7]
+set s7   [lindex $argv 8]
+set s8   [lindex $argv 9]
+set s9   [lindex $argv 10]
+set s10  [lindex $argv 11]
+set s11  [lindex $argv 12]
+set s12  [lindex $argv 13]
+set s13  [lindex $argv 14]
+set s14  [lindex $argv 15]
+set s15  [lindex $argv 16]
+set s16  [lindex $argv 17]
+set s17  [lindex $argv 18]
+set s18  [lindex $argv 19]
+set s19  [lindex $argv 20]
+set s20  [lindex $argv 21]
+
+#############
+#############
+proc usage {} {
+  global myname
+  global homedir
+  global pwdir
+  puts stderr "
+usage: $myname <tag> <tag> <command>
+
+EG: $myname TEST     no_entry scp -p myfile colin@myhost1:.
+EG: $myname 10.2.3.1 nobanner ssh -t newuser@10.2.3.1 \"uname -a; ls -l\"
+"
+  exit 2
+}
+
+#####################
+#####################
+# other methods like [catch {exp_send -i $pid "is alive"} result] didn't fare so well
+proc is_ssh      {} { global s1;   if {[string match "ssh" "$s1"]}                { return 1 } else { return 0 } }
+proc is_padmin   {} { global argv; if {[string first "pbrun padmin" "$argv"] > 0} { return 1 } else { return 0 } }
+proc is_mkvterm  {} { global argv; if {[string first "mkvterm"      "$argv"] > 0} { return 1 } else { return 0 } }
+proc is_adhoc    {} { global argv; if {[string first "adhoc"        "$argv"] > 0} { return 1 } else { return 0 } }
+proc is_mynim    {} { global argv; if {[string first "mynim"        "$argv"] > 0} { return 1 } else { return 0 } }
+proc is_cvs      {} { global argv; if {[string first "frmgpswdc03d" "$argv"] > 0} { return 1 } else { return 0 } }
+proc is_linuxgw  {} { global argv; if {[string first "fm-mwdc-gp-1" "$argv"] > 0} { return 1 } else { return 0 } }
+
+proc getenv {name}  { return [exec sh -c "echo \"\$$name\""] }
+
+####################
+####################
+# Lookup line and return "" if not found
+# Lookup pw using 3 methods; env PWLOOKUP, pw.lookup file, pw.me.euroclear, checked in that order, first success returns
+# (the env variable is used first so that the same user can test pw without effecting pw operations that may run from cron)
+proc pwlookup {pw} {
+
+  global pwdir
+
+  # Method 1 - environmental variable
+  set contents [exec sh -c "echo \"\$PWLOOKUP\""]
+  set lines [split $contents "\n"]
+
+  foreach line $lines {
+    # the ^ is implicit in this match
+    if {[string match "$pw\[ 	\]\*" "$line"]} {
+      return $line
+    }
+  }
+
+  # Method 2 - flat file
+  if {[file exists $pwdir/pw.lookup]} {
+    set contents [exec cat $pwdir/pw.lookup 2>/dev/null]
+    set lines [split $contents "\n"]
+
+    foreach line $lines {
+      # the ^ is implicit in this match
+      if {[string match "$pw\[ 	\]\*" "$line"]} {
+        return $line
+      }
+    }
+  }
+
+  # Method 3 - encrypted file
+  if {[file exists $pwdir/pw.lookup.enc]} {
+    set contents [exec openssl des3 -d -in $pwdir/pw.lookup.enc 2>/dev/null]
+    set lines [split $contents "\n"]
+
+    foreach line $lines {
+      # the ^ is implicit in this match
+      if {[string match "$pw\[ 	\]\*" "$line"]} {
+        return $line
+      }
+    }
+  }
+
+  return ""
+}
+
+################################
+################################
+# If $pwentry  is no_entry then you should have a public key to login.
+# If $rpwentry is no_entry then you don't want to run su or pbrun before command.
+# If $rpwentry is change_password then $pwentry should have an extra field for the new password.
+# !! BE CAREFUL with [exec egrep "...regexp..." file ] since regexp special characters need to be escaped.
+proc set_passwds {pwentry rpwentry} {
+  global passwd
+  global rpasswd
+
+  # lookup pwentry
+  if {[string match "$pwentry" "no_entry"] == 0} {
+    set line [pwlookup $pwentry]
+    if {[string match "$line" ""]} { return 0 }
+    set passwd [lindex $line 1]
+    set rpasswd [lindex $line 2]
+  }
+  
+  # if rpwentry==no_entry then pwentry must have been ok since "pw no_entry no_entry" is checked at the beginning
+  if {[string match "$rpwentry" "no_entry"]} { return 1 }
+  if {[string match "$rpwentry" "nobanner"]} { return 1 }
+  if {[string match "$rpwentry" "pbrun"]}    { return 1 }
+  if {[string match "$rpwentry" "command"]}  { return 1 }
+
+  # lookup rpwentry
+  set line [pwlookup $rpwentry]
+  if {[string match "$line" ""]} { return 0 }
+  set rpasswd [lindex $line 1]
+  return 1
+}
+
+################
+################
+# other methods like [catch {exp_send -i $pid "is alive"} result] didn't fare so well
+proc is_alive {pid} {
+  set psout [exec ps -p $pid]
+  if {[string first "<defunct>" "$psout"] > 0} {
+    return 0
+  } else {
+    return 1
+  }
+}
+
+#####################
+#####################
+proc send_noecho {str} {
+  stty -noecho
+  sleep .2
+  send "$str"
+  stty -echo
+}
+
+################
+################
+# pasting this script to an HMC console takes about 20 seconds
+# using RSH unlock:       /opt/ftutils/NIM/0.5/frameteam_access_for_build.sh
+# this is OpenSsh unlock: /opt/ftutils/bin/frameteam_access_for_build.sh (VIOCs use Tectia)
+proc unlock_host {} {
+  set success      0
+  set cksum_result [exec cksum /opt/ftutils/NIM/0.5/frameteam_access_for_build.sh]
+  set contents     [exec cat   /opt/ftutils/NIM/0.5/frameteam_access_for_build.sh]
+  set lines        [split $contents "\n"]
+  set script       "/tmp/zz.sh"
+  set cksum        [lindex $cksum_result 0]
+  set size         [lindex $cksum_result 1]
+  set cksum_expect "$cksum $size $script"
+  puts stderr "
+
+ -----------------------------------------------
+ Cut and paste takes a few seconds - please wait
+ -----------------------------------------------
+"
+  set timeout 3
+  send "typeset +x PS1\r"
+  send "ksh\r"
+  send "PS1=TargetPrompt\r"
+  stty -noecho
+  expect -nocase -re "TargetPrompt" { send "cat > $script\r" }
+  foreach line $lines { send "$line\r" }
+  send "\004"
+  stty -echo
+  expect -re $
+  sleep 20
+  expect -nocase -re "TargetPrompt" { send "chmod 755 $script\r" }
+  sleep 2
+  expect -nocase -re "TargetPrompt" { send "ls -l $script\r" }
+  expect -nocase -re "TargetPrompt" { send "cksum $script\r" }
+  expect "$cksum_expect"            { send "$script\n"; set success 1 } else { set success 0 }
+  expect -re $
+  send "\r"
+  expect -nocase -re "TargetPrompt" { send "exit\r" }
+  expect -nocase -re "login:"       { send "~.\r" }
+  if {$success} { puts "\n\nHost unlocked\n\n\r"; exit 0 } else { puts "\n\nERROR: cksum $script (did not get: $cksum_expect)\n\n\r"; exit 1 }
+  send "exit\r"
+  send "exit\r"
+}
+
+################
+################
+proc pubkeys {} {
+  set contents     [exec cat /opt/colin/.ssh2/id_dsa_4096_a.pub.openssh]
+  set lines        [split $contents "\n"]
+  send "typeset +x PS1\r"
+  send "ksh\r"
+  send "PS1=TargetPrompt\r"
+  expect -nocase -re "TargetPrompt" { send "cat > /tmp/colin.authorized_keys2\r" }
+  foreach line $lines { send "$line\r" }
+  send "\004"
+  expect -re $
+  sleep 2
+  send "exit\r"
+  send "exit\r"
+}
+
+################################
+################################
+# check arguments and lookup passwords
+proc check_args {pwentry rpwentry} {
+  if {[string match "$pwentry" "no_entry"] && [string match "$rpwentry" "change_password"]} {
+    puts stderr "$myname: change_password feature has been removed"
+    exit 1
+  } elseif {[string match "$pwentry" "no_entry"]} {
+    puts stderr "$myname: first password lookup cannot be no_entry"
+    exit 1
+  } elseif {[set_passwds $pwentry $rpwentry] == 0} {
+    puts stderr "$myname: Password lookup failed"
+    exit 1
+  }
+}
+
+############################################
+############################################
+# NOTE: matching "password:" has more success than ".*password:.*" so don't change this.
+# At this point $passwd should always be set.
+# This first expect is for the first password and it will fail if a second password is requested.
+# For calls that invoke two password requests a string is inserted in the middle so that
+# this script can check for success, eg. 'ssh -t myhost "echo password ok; pbrun root"'
+proc login_user {passwd user_prompt} {
+  global myname
+  global spawnpid
+  expect {
+    # HACK: "\\+ ssh" removes stderr banner message from lparstate/lparprof/etc style commands
+    -nocase -re "^\\+ ssh"               { log_user 0; exp_continue }
+    -nocase -re "continue connecting.*"  { send "yes\r"; exp_continue }
+    -nocase -re "change the host key.*"  { send "yes\r"; exp_continue }
+    -nocase -re "password:" {
+      send_noecho "$passwd\r"
+      set timeout 6
+      # NOTE on log_user: turn on output like this otherwise I get a spurious newline
+      expect {
+        "TERM = *)"                 { send "\r"; exp_continue }
+        -re "password ok"           { set success 1 }
+        -re $user_prompt            { set success 1 }
+        -re "Open in progress"      { if {[is_mkvterm]} { set success 1 } }
+        -nocase -re ".*denied.*"    { puts stderr "$myname: password denied\n"; exec kill $spawnpid }
+        -nocase -re ".*password:.*" { puts stderr "$myname: password failed\n"; exec kill $spawnpid; set timeout 1 }
+        -re "(\r|\n)"               { log_user 1; exp_continue }
+      }
+    }
+    -nocase -re "login again to activate.*"  { send "\r"; puts stderr "\n$myname: first time login for LDAP.\n"; exec kill $spawnpid }
+    -nocase -re "connection refused.*"       { puts stderr "$myname: connection refused.\n"; exec kill $spawnpid }
+    -nocase -re "timed out.*"                { puts stderr "$myname: timed out.\n"; exec kill $spawnpid }
+    timeout                                  { puts stderr "$myname: timed out.\n"; exec kill $spawnpid }
+    #timeout { set timeout 60 ; exp_continue }
+  }
+}
+
+#########################
+#########################
+# Set up environment for ssh and padmin
+# Login as root for mkvterm (and run $cmd if necessary)
+proc setupenv {action cmd} {
+  global myname
+  global spawnpid
+  sleep .5
+  if {[is_alive $spawnpid]} {
+    if {[is_ssh]}      { send_noecho "TERM=vt220; set -o vi\r" }
+    if {[is_cvs]}      { send_noecho "TERM=xterm; set -o vi; HOME=/export/sandbox/colin; HISTFILE=\$HOME/.sh_history; HISTSIZE=500; cd \$HOME; pwd\r" }
+    if {[is_linuxgw]}  { send_noecho "TERM=xterm; set -o vi; HOME=/tmp/colin; HISTFILE=\$HOME/.sh_history; HISTSIZE=500; cd \$HOME; pwd\r" }
+    if {[is_padmin]}   { send_noecho "oem_setup_env\rTERM=vt220; unset TMOUT; set -o vi\r" }
+    if {[is_adhoc]}    { send_noecho "su - adhoc\r" }
+    if {[is_mkvterm]} {
+      set timeout 5
+      expect {
+        -nocase -re "login:" {
+          send "root\r"
+          expect -nocase -re "#" { send_noecho "TERM=vt220; set -o vi\r" }
+        }
+      }
+    }
+    if {[string match "$action" "command"]} { $cmd }
+  }
+}
+
+################
+################
+proc for_mynim {} {
+  global spawnpid
+  if {[is_alive $spawnpid]} {
+    if {[is_mynim]} { send_noecho "ssh -t mynim.thepearses.com \". ./.profile; ksh -o vi\"\r" }
+  }
+}
+
+############
+############
+# Interact and exit in the appropriate way for ssh, padmin and mkvterm
+# NOTE: when exit is captured it is not echoed until the '\r'
+proc trap_exits {} {
+  global myname
+  global spawnpid
+  if {[is_alive $spawnpid]} {
+    interact {
+      \001   { puts stderr "\n\nyou typed a ctrl-a\n\n"; send "\001" }
+  #    \004   { puts stderr "\n\nyou typed a ctrl-d\n\n"; send "\004" }
+      "~!"     { puts stderr "===== test ====="; send "ls -ld .\r"; puts stderr "===== test ====="; }
+      "exit\r" {
+        if {[is_mynim]}   { puts stderr "===== exit mynim =====";   send "exit\r"; sleep 1; }
+        if {[is_adhoc]}   { puts stderr "===== exit adhoc =====";   send "exit\r"; }
+        if {[is_mkvterm]} { puts stderr "===== exit mkvterm ====="; send "~.\r"; }
+        if {[is_padmin]}  { puts stderr "===== exit padmin =====";  send "exit\r"; }
+        if {[is_ssh]}     { puts stderr "===== exit ssh =====";     send "exit\r"; }
+      }
+    }
+  }
+}
+
+####################
+####################
+# NOTE ON SPAWNING using args s1 .. s20
+# -------------------------------------
+# This whole section (argv_woutcmd etc) is commented out because the following scp doesn't work !!
+# Expect translates this: scp -p host:file.'$(uname -n)' dest
+#                   into: scp -p {host:file.$(uname -n)} dest
+#
+# NOTE on argv_withcmd and argv_woutcmd:
+# If $rpwentry is "no_entry" then we want the command to be run on the ssh line so that ssh will end once the command has finished.
+# If $rpwentry is not "no_entry" then we want the command to be run after ssh and su/pbrun etc.
+# $command must be single quoted, otherwise pw ... "echo "'$(uname -n)' will run on the local machine
+#
+#set argc_withcmd [exec expr $argc - 1]
+#set argc_woutcmd [exec expr $argc - 2]
+#set argv_woutcmd [lrange $argv 2 $argc_woutcmd]
+#set command      [lindex $argv   $argc_withcmd]
+#
+#if {[string match "$rpwentry" "command"]} {
+#  set spawnpid     [spawn sh -c "$argv_woutcmd '$command'"]
+#} else {
+#  set spawnpid     [spawn sh -c "$argv_woutcmd"]
+#}
+#
+# Old (clunky) method which works better (than above method commented out) for args < 20 but, unfortunately, I have to specify
+# all the args as seperate variables on the "spawn" command line.
+#
+# Below is the only was I can get variable arguments to work. I tried spawn $argv, it runs "$argv". spawn [array names myarr] does the same.
+# The above is an attempt to solve the problem using sh -c ... but to no avail.
+#
+# <command> starts at index 3 and ends at index 21 (20 args)
+# I have check where args finish otherwise the blank args are used (IE. ssh system "" - will try and run a command "" and exit)
+#####################
+#####################
+
+########
+########
+# Main
+if {$argc < 3} { usage }
+set lastargc [exec expr $argc - 1]
+set lastargv [lindex $argv $lastargc]
+
+if {[string match "$pwentry" ""]}  { usage }
+if {[string match "$rpwentry" ""]} { usage }
+
+set passwd ""
+set rpasswd ""
+set command ""
+
+#check_args $pwentry $rpwentry
+
+if {$argc > 21} {
+  puts stderr "$myname: <command> is restricted to 20 arguments (see comments in this script for explanation).\n"
+  exit 1
+  }
+
+#####################
+#####################
+# nobanner: turn off "spawn...." until after password has been entered
+if {[string match "$rpwentry" "nobanner"]} { log_user 0 }
+
+if {[string match "$rpwentry" "command"]} {
+  if {[string match $s2 ""]} { set spawnpid [spawn $s1]
+  } elseif {[string match $s3  ""]} { set spawnpid [spawn $s1] ; set command "$s2"
+  } elseif {[string match $s4  ""]} { set spawnpid [spawn $s1 $s2] ; set command "$s3"
+  } elseif {[string match $s5  ""]} { set spawnpid [spawn $s1 $s2 $s3] ; set command "$s4"
+  } elseif {[string match $s6  ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4] ; set command "$s5"
+  } elseif {[string match $s7  ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5] ; set command "$s6"
+  } elseif {[string match $s8  ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6] ; set command "$s7"
+  } elseif {[string match $s9  ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7] ; set command "$s8"
+  } elseif {[string match $s10 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8] ; set command "$s9"
+  } elseif {[string match $s11 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9] ; set command "$s10"
+  } elseif {[string match $s12 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10] ; set command "$s11"
+  } elseif {[string match $s13 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11] ; set command "$s12"
+  } elseif {[string match $s14 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12] ; set command "$s13"
+  } elseif {[string match $s15 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13] ; set command "$s14"
+  } elseif {[string match $s16 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14] ; set command "$s15"
+  } elseif {[string match $s17 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14 $s15] ; set command "$s16"
+  } elseif {[string match $s18 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14 $s15 $s16] ; set command "$s17"
+  } elseif {[string match $s19 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14 $s15 $s16 $s17] ; set command "$s18"
+  } elseif {[string match $s20 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14 $s15 $s16 $s17 $s18] ; set command "$s19"
+  }
+} else {
+  if {[string match $s2 ""]} { set spawnpid [spawn $s1]
+  } elseif {[string match $s3  ""]} { set spawnpid [spawn $s1 $s2]
+  } elseif {[string match $s4  ""]} { set spawnpid [spawn $s1 $s2 $s3]
+  } elseif {[string match $s5  ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4]
+  } elseif {[string match $s6  ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5]
+  } elseif {[string match $s7  ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6]
+  } elseif {[string match $s8  ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7]
+  } elseif {[string match $s9  ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8]
+  } elseif {[string match $s10 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9]
+  } elseif {[string match $s11 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10]
+  } elseif {[string match $s12 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11]
+  } elseif {[string match $s13 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12]
+  } elseif {[string match $s14 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13]
+  } elseif {[string match $s15 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14]
+  } elseif {[string match $s16 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14 $s15]
+  } elseif {[string match $s17 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14 $s15 $s16]
+  } elseif {[string match $s18 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14 $s15 $s16 $s17]
+  } elseif {[string match $s19 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14 $s15 $s16 $s17 $s18]
+  } elseif {[string match $s20 ""]} { set spawnpid [spawn $s1 $s2 $s3 $s4 $s5 $s6 $s7 $s8 $s9 $s10 $s11 $s12 $s13 $s14 $s15 $s16 $s17 $s18 $s19]
+  }
+}
+
+#######################
+#######################
+#debug (like set -x)
+#exp_internal 1
+#set send_human {.4 .4 .2 .5 100}
+set send_human {.1 .3 1 .05 10}
+set success 0
+
+# work for servers that take a long time to respond
+#set timeout 3
+set timeout 60
+set env(HISTFILE) ""
+
+#set prompt "(%|>|\\\$|#)"
+set user_prompt "(>|\\\$)"
+set root_prompt "#"
+
+# This doesn't seem to make any difference. I still get \r\n
+#stty -onlcr   #eval stty -onlcr
+
+#####################
+#####################
+# Log in to the server (once human speed set use send -h)
+login_user    "$passwd" "$user_prompt"
+
+setupenv "$rpwentry" "$command"
+for_apnim
+trap_exits
+
+exit 0
+
