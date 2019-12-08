@@ -8,5 +8,6 @@ ehthumbs.db
 Thumbs.db
 
 # My-crap
+.sh_history.autologin.py
 workdir
 tmp*
