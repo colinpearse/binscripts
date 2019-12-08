@@ -4,6 +4,7 @@ This is a collection of general purpose scripts.
 
 ## List
 
+* **binexp** general expect scripts
 * **binsh** general bash, korn scripts
 * **binpl** general perl scripts
 * **binpy** general python scripts
