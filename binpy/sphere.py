@@ -4,7 +4,7 @@
  LICENSE file at the top-level directory for the conditions of distribution.
 
  Name:        sphere.py
- Description: Draw a sphere given a radius using matrix coordinates
+ Description: Draw a sphere given a radius and display coordinates and ascii circles
 '''
 
 import os
@@ -20,9 +20,9 @@ def usage(name):
     print (" usage: %s <radius> mchollow"%(name))
     print ("")
     print (" Draw a solid sphere, then hollow it out if needed.")
-    print (" The map coordinates, z slices, and ascii circles are displayed by slice z.")
+    print (" Displayed are: the map coordinates, z slices, and ascii circles by z slice.")
     print ("")
-    print (" The \"mcsolid\" and \"mchollow\" is used by \"mcwrite.sh\" to draw a")
+    print (" The \"mcsolid\" and \"mchollow\" options are used by \"mcwrite.sh\" to draw a")
     print (" sphere in Minecraft (Bedrock).")
     print ("")
     sys.exit(2)
