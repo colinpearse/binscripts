@@ -172,7 +172,7 @@ if __name__ == '__main__':
     if len(sys.argv) >= 2:
         radius = int(sys.argv[1])
         cmap = get_sphere(radius)
-        if re.match(r'hollow$',arg2):
+        if re.match(r'.*hollow$',arg2):
             cmap = hollow_sphere(cmap)
         if re.match(r'^mc',arg2):
             mcprint_slices(cmap)
